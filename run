@@ -1,0 +1,19 @@
+#!/bin/bash
+kill $(lsof -t -i:8000 2>/dev/null) 2>/dev/null
+kill $(lsof -t -i:3000 2>/dev/null) 2>/dev/null
+sleep 1
+
+cd /workspaces/vto-hadoop-project/backend
+pip install -q fastapi uvicorn pydantic python-multipart Pillow numpy 2>/dev/null
+python main.py &
+sleep 3
+
+cd /workspaces/vto-hadoop-project/frontend
+[ ! -d "node_modules" ] && npm install --silent 2>/dev/null
+npx vite --host 0.0.0.0 --port 3000 &
+
+echo ""
+echo "✅ http://localhost:3000"
+echo ""
+trap "kill $(lsof -t -i:8000 2>/dev/null) $(lsof -t -i:3000 2>/dev/null) 2>/dev/null; exit 0" SIGINT
+wait

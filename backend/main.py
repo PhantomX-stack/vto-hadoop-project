@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import base64
 import time
-from ai_engine import analyze_user_image, process_tryon
+import os
 
 app = FastAPI(title="VTryOn API", version="1.0.0")
 
@@ -39,6 +39,7 @@ async def analyze_body(payload: ImagePayload):
     start_time = time.time()
     try:
         image_bytes = base64.b64decode(payload.user_image_base64)
+        from ai_engine import analyze_user_image
         analysis = analyze_user_image(image_bytes)
         analysis["processing_time_ms"] = int((time.time() - start_time) * 1000)
         return analysis
@@ -50,13 +51,8 @@ async def try_on(payload: TryOnPayload):
     start_time = time.time()
     try:
         user_bytes = base64.b64decode(payload.user_image_base64)
-        clothing_bytes = None
-        if payload.clothing_image_base64:
-            try:
-                clothing_bytes = base64.b64decode(payload.clothing_image_base64)
-            except Exception:
-                pass
-        result = process_tryon(user_bytes, clothing_bytes)
+        from ai_engine import process_tryon
+        result = process_tryon(user_bytes)
         result["processing_time_ms"] = int((time.time() - start_time) * 1000)
         return result
     except Exception as e:
@@ -66,6 +62,7 @@ async def try_on(payload: TryOnPayload):
 async def get_recommendations(payload: ImagePayload):
     try:
         image_bytes = base64.b64decode(payload.user_image_base64)
+        from ai_engine import analyze_user_image
         analysis = analyze_user_image(image_bytes)
         return {"recommendations": analysis.get("recommendations", [])}
     except Exception as e:
@@ -73,4 +70,7 @@ async def get_recommendations(payload: ImagePayload):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    print("=" * 50)
+    print("  VTryOn Backend Starting...")
+    print("=" * 50)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

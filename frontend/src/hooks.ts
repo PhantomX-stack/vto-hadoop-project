@@ -96,22 +96,59 @@ export function useCamera(): CameraState {
 export function useBackendStatus(intervalMs: number) {
   var onlineState = useState(false);
   var checkingState = useState(true);
+
   useEffect(function() {
     var mounted = true;
+    var retryCount = 0;
+
     var check = async function() {
-      checkingState[1](true);
-      try {
-        var res = await fetch("http://localhost:8000/health", { method: "GET" });
-        if (mounted) onlineState[1](res.ok);
-      } catch {
-        if (mounted) onlineState[1](false);
+      if (!mounted) return;
+      if (retryCount === 0) checkingState[1](true);
+
+      var found = false;
+      var urls = [
+        "http://localhost:8000/health",
+        "http://localhost:8000/",
+        "http://localhost:8000/api/v1/health",
+      ];
+
+      for (var i = 0; i < urls.length; i++) {
+        try {
+          var controller = new AbortController();
+          var timeoutId = setTimeout(function() { controller.abort(); }, 3000);
+          var res = await fetch(urls[i], {
+            method: "GET",
+            signal: controller.signal,
+            mode: "cors",
+          });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            found = true;
+            break;
+          }
+        } catch (e) {
+          // try next url
+        }
       }
-      if (mounted) checkingState[1](false);
+
+      if (mounted) {
+        onlineState[1](found);
+        checkingState[1](false);
+      }
+
+      retryCount++;
     };
+
+    // Check immediately, then every 3 seconds
     check();
-    var id = setInterval(check, intervalMs || 10000);
-    return function() { mounted = false; clearInterval(id); };
-  }, [intervalMs]);
+    var id = setInterval(check, 3000);
+
+    return function() {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, []);
+
   return { isOnline: onlineState[0], checking: checkingState[0] };
 }
 
