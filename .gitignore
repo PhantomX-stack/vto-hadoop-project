@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+node_modules/
+dist/
+.vite/
+.venv/
+*.egg-info/
+.DS_Store
+ml/weights/*.pt
+ml/weights/*.onnx
+!ml/weights/.gitkeep
