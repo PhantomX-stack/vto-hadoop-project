@@ -1,4 +1,4 @@
-var API_BASE = "http://localhost:8000";
+// All URLs are relative - Vite proxy forwards to backend
 
 export interface ClothingRecommendation {
   id: string;
@@ -32,22 +32,11 @@ export interface TryOnResponse {
   processing_time_ms: number;
 }
 
-export async function checkHealth(): Promise<boolean> {
-  var endpoints = ["/health", "/api/v1/health", "/"];
-  for (var i = 0; i < endpoints.length; i++) {
-    try {
-      var res = await fetch(API_BASE + endpoints[i], { method: "GET" });
-      if (res.ok) return true;
-    } catch (e) {}
-  }
-  return false;
-}
-
 export async function tryOnClothing(
   userImageBase64: string,
   clothingImageBase64: string
 ): Promise<TryOnResponse> {
-  var response = await fetch(API_BASE + "/api/v1/tryon", {
+  var response = await fetch("/api/v1/tryon", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -63,7 +52,7 @@ export async function tryOnClothing(
 }
 
 export async function analyzeBody(userImageBase64: string): Promise<AnalysisResult> {
-  var response = await fetch(API_BASE + "/api/v1/analyze", {
+  var response = await fetch("/api/v1/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ user_image_base64: userImageBase64 }),

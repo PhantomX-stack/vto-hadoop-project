@@ -99,35 +99,27 @@ export function useBackendStatus(intervalMs: number) {
 
   useEffect(function() {
     var mounted = true;
-    var retryCount = 0;
 
     var check = async function() {
       if (!mounted) return;
-      if (retryCount === 0) checkingState[1](true);
+      checkingState[1](true);
 
       var found = false;
-      var urls = [
-        "http://localhost:8000/health",
-        "http://localhost:8000/",
-        "http://localhost:8000/api/v1/health",
-      ];
+      // RELATIVE URLs - goes through Vite proxy
+      var urls = ["/health", "/api/v1/health", "/"];
 
       for (var i = 0; i < urls.length; i++) {
         try {
-          var controller = new AbortController();
-          var timeoutId = setTimeout(function() { controller.abort(); }, 3000);
           var res = await fetch(urls[i], {
             method: "GET",
-            signal: controller.signal,
-            mode: "cors",
+            headers: { "Accept": "application/json" },
           });
-          clearTimeout(timeoutId);
           if (res.ok) {
             found = true;
             break;
           }
         } catch (e) {
-          // try next url
+          // try next
         }
       }
 
@@ -135,11 +127,8 @@ export function useBackendStatus(intervalMs: number) {
         onlineState[1](found);
         checkingState[1](false);
       }
-
-      retryCount++;
     };
 
-    // Check immediately, then every 3 seconds
     check();
     var id = setInterval(check, 3000);
 
