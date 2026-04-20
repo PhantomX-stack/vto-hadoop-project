@@ -1,19 +1,59 @@
 #!/bin/bash
+cd /workspaces/vto-hadoop-project
+
+# Kill old processes
 kill $(lsof -t -i:8000 2>/dev/null) 2>/dev/null
 kill $(lsof -t -i:3000 2>/dev/null) 2>/dev/null
 sleep 1
 
+echo "================================"
+echo "  VTryOn Starting..."
+echo "================================"
+
+# Backend
+echo "[1/2] Starting backend..."
 cd /workspaces/vto-hadoop-project/backend
 pip install -q fastapi uvicorn pydantic python-multipart Pillow numpy 2>/dev/null
-python main.py &
-sleep 3
+python main.py > /tmp/vto-backend.log 2>&1 &
+BACKEND_PID=$!
 
+# Wait for backend to be ready (max 15 seconds)
+echo "       Waiting for backend..."
+for i in $(seq 1 15); do
+    if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+        echo "       ✅ Backend is live!"
+        break
+    fi
+    sleep 1
+done
+
+# Check if backend actually started
+if ! curl -s http://localhost:8000/health > /dev/null 2>&1; then
+    echo "       ❌ Backend failed. Log:"
+    cat /tmp/vto-backend.log
+    echo ""
+    echo "       Starting frontend anyway (AI Fallback mode)..."
+else
+    echo "       Health check: $(curl -s http://localhost:8000/health)"
+fi
+
+# Frontend
+echo "[2/2] Starting frontend..."
 cd /workspaces/vto-hadoop-project/frontend
 [ ! -d "node_modules" ] && npm install --silent 2>/dev/null
-npx vite --host 0.0.0.0 --port 3000 &
+npx vite --host 0.0.0.0 --port 3000 > /tmp/vto-frontend.log 2>&1 &
+FRONTEND_PID=$!
+
+sleep 2
 
 echo ""
-echo "✅ http://localhost:3000"
+echo "================================"
+echo "  ✅ http://localhost:3000"
+echo "  ✅ http://localhost:8000/health"
+echo "================================"
 echo ""
-trap "kill $(lsof -t -i:8000 2>/dev/null) $(lsof -t -i:3000 2>/dev/null) 2>/dev/null; exit 0" SIGINT
+echo "  Ctrl+C to stop"
+echo ""
+
+trap "echo ''; echo 'Stopping...'; kill $BACKEND_PID 2>/dev/null; kill $FRONTEND_PID 2>/dev/null; echo '✅ Stopped.'; exit 0" SIGINT SIGTERM
 wait

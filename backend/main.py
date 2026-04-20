@@ -3,10 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import base64
 import time
+import sys
 import os
+
+# Make sure we can import from same directory
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 app = FastAPI(title="VTryOn API", version="1.0.0")
 
+# CORS - allow everything
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -68,9 +73,14 @@ async def get_recommendations(payload: ImagePayload):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+# Startup event - confirms server is ready
+@app.on_event("startup")
+async def startup():
+    print("\n" + "=" * 50)
+    print("  ✅ VTryOn Backend is RUNNING on port 8000")
+    print("  ✅ Health: http://localhost:8000/health")
+    print("=" * 50 + "\n")
+
 if __name__ == "__main__":
     import uvicorn
-    print("=" * 50)
-    print("  VTryOn Backend Starting...")
-    print("=" * 50)
     uvicorn.run(app, host="0.0.0.0", port=8000)
